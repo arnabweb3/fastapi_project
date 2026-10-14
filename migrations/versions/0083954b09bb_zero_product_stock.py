@@ -19,11 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.drop_constraint(
-        "ck_quantity_nonnegative",
-        "products",
-        type_="check",
-    )
+    # op.drop_constraint(
+    #     "ck_quantity_nonnegative",
+    #     "products",
+    #     type_="check",
+    # )
     op.create_check_constraint(
         "ck_products_quantity_nonnegative",
         "products",

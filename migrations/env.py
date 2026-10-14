@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from database import Base
 from models.order import Order
 from models.product import Product
+from models.user import User
 from sqlalchemy import create_engine
 
 load_dotenv()
