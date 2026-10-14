@@ -1,6 +1,13 @@
 from database import Base
-from sqlalchemy.orm import Mapped,mapped_column
+from sqlalchemy.orm import Mapped,mapped_column, relationship
 from sqlalchemy import Integer, String , ForeignKey
+# from models.product import Product
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from models.product import Product
+
 
 class Order(Base):
     __tablename__ = 'orders'
@@ -12,11 +19,22 @@ class Order(Base):
         index=False
     )
 
+   
     product_id: Mapped[int] = mapped_column(
         # Integer,
         ForeignKey("products.id", ondelete="RESTRICT"),
         nullable=False
     )
+
+    product: Mapped["Product"] = relationship(
+        "Product",
+        back_populates="orders"
+
+    )
+    
+
+
+
     quantity: Mapped[int] = mapped_column(
         Integer,
         nullable=False

@@ -7,7 +7,7 @@ from data.orders import orders
 
 
 from database import get_db
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
 from models.order import Order
 from models.product import Product
@@ -26,7 +26,9 @@ router = APIRouter(
 # GET /orders
 @router.get("/", status_code=status.HTTP_200_OK, response_model=list[OrderResponse])
 def get_orders(pagination = Depends(get_pagination) , db : Session = Depends(get_db)):
-    statement = select(Order)
+    statement = select(Order).options(
+        selectinload(Order.product)
+    )
     orders = db.scalars(statement=statement).all()
 
 
@@ -44,24 +46,60 @@ def get_orders(pagination = Depends(get_pagination) , db : Session = Depends(get
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=OrderResponse)
 def create_order(order:OrderCreate ,  db : Session = Depends(get_db)):
 
-    new_order = Order(
-        product_id = order.product_id,
-        quantity = order.quantity      
-    )
+
+
 
     try: 
+        statement = select(Product).where(
+            Product.id == order.product_id
+        ).with_for_update()
+
+        product = db.scalars(statement=statement).first()
+
+
+        if product is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Product not found"
+            )
+
+        if order.quantity <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Order quantity must be greater than zero"
+            )
+
+        if product.quantity < order.quantity:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Insufficient stock"
+            )
+
+        product.quantity -= order.quantity
+
+
+        new_order = Order(
+            product_id = order.product_id,
+            quantity = order.quantity      
+        )
 
         db.add(new_order)
         db.commit()
 
         db.refresh(new_order)  
 
+        return new_order
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+
     except Exception:
 
         db.rollback() 
         raise
 
-    return new_order
 
 
 # GET /orders/{id}
